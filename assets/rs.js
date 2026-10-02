@@ -4,6 +4,7 @@
 "use strict";
 var FB = {"apiKey": "AIzaSyA68HChTsQowansK8ZUVPEk0_J4lpwC_jQ", "authDomain": "aabyd-khan.firebaseapp.com", "projectId": "aabyd-khan", "storageBucket": "aabyd-khan.firebasestorage.app", "messagingSenderId": "876898185487", "appId": "1:876898185487:web:a790f0d826ff9d67500e7a", "measurementId": "G-QWG3M85FKM"};
 var ADMIN_CODE = "tir2026";
+var CLOUDINARY = {"cloudName": "hzb5usfy", "uploadPreset": "rs_uploads"};
 
 function onFbReady(cb){
   if(window.firebase && firebase.apps && firebase.apps.length){ cb(); return; }
@@ -98,7 +99,7 @@ function renderPoll(root, key, cfg, mini){
     });
   }
   refreshPoll(root, cfg, doc);
-  setInterval(function(){ refreshPoll(root, cfg, doc); }, 20000);
+  // real-time: onSnapshot pushes updates instantly; no polling interval needed
 }
 // Admin-created polls (Firestore rs_poll_defs, active=true) render into [data-dyn-polls] slots.
 function loadDynPolls(){
@@ -139,6 +140,8 @@ function castVote(cfg, doc, slug, root){
 }
 function refreshPoll(root, cfg, doc){
   var counts={}, total=0;
+  // drop any previous real-time listener on this poll slot (avoids duplicates)
+  if(root._unsub){ try{ root._unsub(); }catch(e){} root._unsub=null; }
   function render(){
     var opts=root.querySelectorAll('.opt');
     var min=Infinity;
@@ -153,13 +156,17 @@ function refreshPoll(root, cfg, doc){
       if(cfg.danger && total>0 && v===min){ o.classList.add('danger'); }
     });
     var t=root.querySelector('[data-total]');
-    if(t) t.textContent= total? (total.toLocaleString('en-IN')+' fan votes so far') : 'Be the first to vote!';
+    if(t) t.innerHTML= total
+      ? ('<span class="live-dot"></span>LIVE &middot; <b>'+total.toLocaleString('en-IN')+'</b> fan votes')
+      : 'Be the first to vote!';
   }
   try{
-    firebase.firestore().collection(cfg.totalsColl).doc(doc).get().then(function(d){
+    // Real-time listener: every vote updates all viewers within ~1 second.
+    root._unsub=firebase.firestore().collection(cfg.totalsColl).doc(doc).onSnapshot(function(d){
+      counts={}; total=0;
       if(d.exists){ counts=d.data()||{}; Object.keys(counts).forEach(function(k){ total+=counts[k]||0; }); }
       render();
-    }).catch(render);
+    }, function(){ render(); });
   }catch(e){ render(); }
 }
 // ---------- dynamic posts on /news/ (from Firestore rs_posts) ----------
@@ -238,15 +245,30 @@ function renderTab(t){
   else if(t==='media') tabMedia();
   else tabInfo();
 }
-function uploadToStorage(file, onProg){
-  var safe=file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
-  var ref=firebase.storage().ref('rs-media/'+Date.now()+'-'+safe);
-  var task=ref.put(file);
+function uploadToCloudinary(file, onProg){
   return new Promise(function(res, rej){
-    task.on('state_changed', function(snap){
-      if(onProg) onProg(Math.round(snap.bytesTransferred/snap.totalBytes*100));
-    }, rej, function(){ ref.getDownloadURL().then(res, rej); });
+    if(!CLOUDINARY.cloudName || CLOUDINARY.cloudName.indexOf('REPLACE')===0){
+      rej(new Error('Cloudinary not configured — set cloudName in build.py')); return;
+    }
+    var isVideo=/^video\//.test(file.type);
+    var url='https://api.cloudinary.com/v1_1/'+CLOUDINARY.cloudName+'/'+(isVideo?'video':'image')+'/upload';
+    var fd=new FormData(); fd.append('file', file); fd.append('upload_preset', CLOUDINARY.uploadPreset);
+    var xhr=new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.upload.onprogress=function(e){ if(e.lengthComputable&&onProg) onProg(Math.round(e.loaded/e.total*100)); };
+    xhr.onload=function(){
+      try{
+        var j=JSON.parse(xhr.responseText);
+        if(xhr.status>=200&&xhr.status<300&&j.secure_url) res({url:j.secure_url, public_id:j.public_id||'', resource_type:j.resource_type||'image'});
+        else rej(new Error((j&&j.error&&j.error.message)||('Upload failed ('+xhr.status+')')));
+      }catch(e){ rej(new Error('Upload failed: bad response')); }
+    };
+    xhr.onerror=function(){ rej(new Error('Upload failed: network error')); };
+    xhr.send(fd);
   });
+}
+function cloudinaryConfigured(){
+  return CLOUDINARY.cloudName && CLOUDINARY.cloudName.indexOf('REPLACE')!==0;
 }
 function copyText(t, btn){
   function done(){ var o=btn.textContent; btn.textContent='Copied!'; setTimeout(function(){btn.textContent=o;},1500); }
@@ -278,10 +300,10 @@ function tabArticles(){
     var f=e.target.files[0]; if(!f) return;
     var prog=document.getElementById('a-prog'); prog.style.display='block';
     var bar=prog.querySelector('i');
-    uploadToStorage(f, function(p){ bar.style.width=p+'%'; }).then(function(url){
-      articleImageUrl=url;
-      document.getElementById('a-preview').innerHTML='<img class="img-preview" src="'+escapeHtml(url)+'" alt=""/>';
-      document.getElementById('a-msg').textContent='Image uploaded.';
+    uploadToCloudinary(f, function(p){ bar.style.width=p+'%'; }).then(function(r){
+      articleImageUrl=r.url;
+      document.getElementById('a-preview').innerHTML='<img class="img-preview" src="'+escapeHtml(r.url)+'" alt=""/>';
+      document.getElementById('a-msg').textContent='Image uploaded to Cloudinary.';
     }).catch(function(err){ document.getElementById('a-msg').textContent='Upload failed: '+err.message; });
   });
   document.getElementById('a-save').addEventListener('click', saveArticle);
@@ -472,11 +494,14 @@ function editPoll(id){
   });
 }
 
-// ================= MEDIA =================
+// ================= MEDIA (Cloudinary + rs_media index in Firestore) =================
 function tabMedia(){
   var box=document.getElementById('tab-body');
+  var warn = cloudinaryConfigured() ? ''
+    : '<div class="note" style="border-color:#f59e0b;color:#fbbf24">Cloudinary is not configured yet — uploads are disabled. Set <b>cloudName</b> in build.py (CLOUDINARY_CONFIG) and rebuild.</div>';
   box.innerHTML='<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:6px">Upload Media</h3>'
-    +'<p style="color:var(--muted);font-size:.9rem">Images and videos for articles. Stored in Firebase Storage (rs-media/).</p>'
+    +'<p style="color:var(--muted);font-size:.9rem">Images and videos for articles. Hosted on Cloudinary; files are indexed in Firestore (<b>rs_media</b>).</p>'
+    +warn
     +'<label>Choose file</label><input type="file" id="m-file" accept="image/*,video/*"/>'
     +'<div class="prog" id="m-prog" style="display:none"><i></i></div>'
     +'<p id="m-msg" style="margin-top:10px;color:var(--muted)"></p>'
@@ -486,34 +511,39 @@ function tabMedia(){
     var f=e.target.files[0]; if(!f) return;
     var prog=document.getElementById('m-prog'); prog.style.display='block';
     var bar=prog.querySelector('i');
-    uploadToStorage(f, function(p){ bar.style.width=p+'%'; }).then(function(url){
-      document.getElementById('m-msg').textContent='Uploaded! Copy its URL below.';
+    var msg=document.getElementById('m-msg');
+    uploadToCloudinary(f, function(p){ bar.style.width=p+'%'; }).then(function(r){
+      return firebase.firestore().collection('rs_media').add({
+        url:r.url, public_id:r.public_id, resource_type:r.resource_type,
+        name:f.name, createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }).then(function(){
+      msg.textContent='Uploaded! Copy its URL below.';
       e.target.value=''; listMedia();
-    }).catch(function(err){ document.getElementById('m-msg').textContent='Upload failed: '+err.message; });
+    }).catch(function(err){ msg.textContent='Upload failed: '+err.message; });
   });
   listMedia();
 }
 function listMedia(){
   var box=document.getElementById('m-grid'); if(!box) return;
-  firebase.storage().ref('rs-media/').listAll().then(function(res){
-    if(!res.items.length){ box.innerHTML='<p style="color:var(--muted)">No files yet.</p>'; return; }
+  firebase.firestore().collection('rs_media').orderBy('createdAt','desc').limit(60).get().then(function(q){
+    if(q.empty){ box.innerHTML='<p style="color:var(--muted)">No files yet.</p>'; return; }
     box.innerHTML='';
-    res.items.slice().reverse().forEach(function(item){
+    q.forEach(function(d){
+      var m=d.data()||{};
+      var url=m.url||'', isVid=(m.resource_type==='video')||/\.(mp4|mov|webm)$/i.test(m.name||'');
       var card=document.createElement('div'); card.className='media-item';
-      card.innerHTML='<div style="height:110px;display:flex;align-items:center;justify-content:center;background:#0e0e15;color:var(--muted)">…</div>'
-        +'<div class="mi-body"><div class="mi-name">'+escapeHtml(item.name)+'</div>'
+      card.innerHTML='<div style="height:110px;display:flex;align-items:center;justify-content:center;background:#0e0e15;overflow:hidden">'
+        +(isVid?'<span style="font-size:2rem">🎬</span>':'<img src="'+escapeHtml(url)+'" alt="" style="max-height:110px;max-width:100%"/>')
+        +'</div>'
+        +'<div class="mi-body"><div class="mi-name">'+escapeHtml(m.name||'(file)')+'</div>'
         +'<div class="btn-row" style="margin:0"><button class="btn-sm gold">Copy URL</button>'
         +'<button class="btn-sm danger">Delete</button></div></div>';
       box.appendChild(card);
-      var ph=card.firstChild;
-      item.getDownloadURL().then(function(url){
-        if(/\.(jpg|jpeg|png|gif|webp)$/i.test(item.name)){ ph.innerHTML='<img src="'+escapeHtml(url)+'" alt=""/>'; }
-        else { ph.innerHTML='<span style="font-size:2rem">🎬</span>'; }
-        card.querySelector('.btn-sm.gold').addEventListener('click', function(){ copyText(url, this); });
-      });
+      card.querySelector('.btn-sm.gold').addEventListener('click', function(){ copyText(url, this); });
       card.querySelector('.btn-sm.danger').addEventListener('click', function(){
-        if(!confirm('Delete this file? Articles using it will break.')) return;
-        item.delete().then(listMedia).catch(function(e){ alert('Delete failed: '+e.message); });
+        if(!confirm('Remove this file from the library? (The Cloudinary file itself must be deleted in the Cloudinary dashboard.)')) return;
+        firebase.firestore().collection('rs_media').doc(d.id).delete().then(listMedia);
       });
     });
   }).catch(function(e){ box.innerHTML='<p style="color:#f87171">Could not list files: '+escapeHtml(e.message)+'</p>'; });
@@ -530,9 +560,10 @@ function tabInfo(){
     +'<div class="fact-row"><b>Poll definitions</b><span>rs_poll_defs</span></div>'
     +'<div class="fact-row"><b>Vote records</b><span>rs_poll_votes · rs_poll_evict_votes · rs_votes_*</span></div>'
     +'<div class="fact-row"><b>Vote totals</b><span>rs_poll_totals · rs_poll_evict_totals · rs_totals_*</span></div>'
-    +'<div class="fact-row"><b>Media</b><span>Storage: rs-media/</span></div>'
+    +'<div class="fact-row"><b>Media</b><span>Cloudinary'+(cloudinaryConfigured()?' (configured)':' (not configured)')+'</span></div>'
+    +'<div class="fact-row"><b>Media index</b><span>rs_media</span></div>'
     +'</div>'
-    +'<div class="note">Admin writes are protected by the site passcode (client-side gate). Publish the Firestore + Storage rules from <b>firestore.rules</b> / <b>storage.rules</b> in the Firebase console for the intended access model, and never share the passcode.</div>'
+    +'<div class="note">Admin writes are protected by the site passcode (client-side gate). Publish the Firestore rules from <b>firestore.rules</b> in the Firebase console for the intended access model, and never share the passcode.</div>'
     +'<div class="btn-row"><a class="btn btn-ghost" href="https://console.firebase.google.com/project/aabyd-khan/firestore" target="_blank" rel="noopener">Open Firebase Console</a></div>';
 }
 })();
