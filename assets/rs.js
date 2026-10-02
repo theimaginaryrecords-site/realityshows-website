@@ -49,7 +49,7 @@ function initCountdown(){
 }
 
 // ---------- fan poll ----------
-var CONTESTANTS = [{"slug": "mary-kom", "name": "Mary Kom"}, {"slug": "aasif-khan", "name": "Aasif Khan"}, {"slug": "kanika-mann", "name": "Kanika Mann"}, {"slug": "scoutop", "name": "ScoutOP"}, {"slug": "amrapali-dubey", "name": "Amrapali Dubey"}, {"slug": "mahhi-vij", "name": "Mahhi Vij"}, {"slug": "yung-dsa", "name": "Yung DSA"}, {"slug": "qazi-touqeer", "name": "Qazi Touqeer"}, {"slug": "arishfa-khan", "name": "Arishfa Khan"}, {"slug": "rohed-khan", "name": "Rohed Khan"}, {"slug": "isha-rikhi", "name": "Isha Rikhi"}, {"slug": "gullu", "name": "Gullu"}, {"slug": "rhiti-tiwari", "name": "Rhiti Tiwari"}, {"slug": "uditi-singh", "name": "Uditi Singh"}, {"slug": "aman-gandhi", "name": "Aman Gandhi"}, {"slug": "love-gill", "name": "Love Gill"}];
+var CONTESTANTS = [{"slug": "mary-kom", "name": "Mary Kom", "evicted": false}, {"slug": "aasif-khan", "name": "Aasif Khan", "evicted": false}, {"slug": "kanika-mann", "name": "Kanika Mann", "evicted": false}, {"slug": "scoutop", "name": "ScoutOP", "evicted": false}, {"slug": "amrapali-dubey", "name": "Amrapali Dubey", "evicted": false}, {"slug": "mahhi-vij", "name": "Mahhi Vij", "evicted": false}, {"slug": "yung-dsa", "name": "Yung DSA", "evicted": false}, {"slug": "qazi-touqeer", "name": "Qazi Touqeer", "evicted": false}, {"slug": "arishfa-khan", "name": "Arishfa Khan", "evicted": false}, {"slug": "rohed-khan", "name": "Rohed Khan", "evicted": true}, {"slug": "isha-rikhi", "name": "Isha Rikhi", "evicted": true}, {"slug": "gullu", "name": "Gullu", "evicted": false}, {"slug": "rhiti-tiwari", "name": "Rhiti Tiwari", "evicted": true}, {"slug": "uditi-singh", "name": "Uditi Singh", "evicted": false}, {"slug": "aman-gandhi", "name": "Aman Gandhi", "evicted": false}, {"slug": "love-gill", "name": "Love Gill", "evicted": false}];
 
 function votedFor(){ try{ return localStorage.getItem('rs_voted_'+POLL_ID); }catch(e){ return null; } }
 function setVoted(slug){ try{ localStorage.setItem('rs_voted_'+POLL_ID, slug); }catch(e){} }
@@ -59,7 +59,8 @@ function initPolls(){
 }
 function buildPoll(root){
   var full = root.getAttribute('data-poll')==='full';
-  var list = full ? CONTESTANTS : CONTESTANTS.slice(0,6);
+  var active = CONTESTANTS.filter(function(c){return !c.evicted;});
+  var list = full ? active : active.slice(0,6);
   var voted = votedFor();
   var html='<h3>Who is your favourite?</h3><p class="poll-sub">Bigg Boss 20 &mdash; Week 4 unofficial fan poll. Tap to vote.</p><div class="poll-opts">';
   list.forEach(function(c){
@@ -153,7 +154,7 @@ function slugify(s){ return s.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').r
 function showPanel(root){
   root.innerHTML='<div class="form-card"><h2 style="font-family:var(--font-d);text-transform:uppercase">Publish News</h2>'
     +'<label>Title</label><input type="text" id="p-title"/>'
-    +'<label>Category</label><select id="p-cat"><option>News</option><option>Eviction</option><option>Fights</option><option>Tasks</option><option>Rumours</option><option>Weekend Ka Vaar</option><option>TRP &amp; Records</option></select>'
+    +'<label>Category</label><select id="p-cat"><option>News</option><option>Eviction</option><option>Fights</option><option>Tasks</option><option>Rumours</option><option>Weekend Ka Vaar</option><option>TRP &amp; Records</option><option>Gossip</option><option>Controversy</option></select>'
     +'<label>Excerpt</label><input type="text" id="p-excerpt"/>'
     +'<label>Body (plain text, blank line = new paragraph)</label><textarea id="p-body"></textarea>'
     +'<div style="margin-top:18px"><button class="btn btn-gold" id="p-pub">Publish</button></div>'
