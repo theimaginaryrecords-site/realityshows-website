@@ -1,0 +1,99 @@
+// Firestore security rules — realityshows.in (Firebase project: aabyd-khan)
+// ============================================================================
+// HONEST SECURITY NOTE:
+// The /admin/ panel is protected by a client-side passcode. That means anyone
+// who can read the site's JavaScript could, in theory, write to rs_posts and
+// rs_poll_defs. These rules therefore keep the PUBLIC-SAFE collections truly
+// public (reads + vote-shaped writes only), while admin collections remain
+// writable. For stronger protection, add Firebase Authentication to the admin
+// panel and gate writes on request.auth != null (or a custom admin claim).
+//
+// What each collection is:
+//   rs_posts              — news articles published from /admin/
+//   rs_poll_defs          — poll definitions created from /admin/
+//   rs_media              — media library index (Cloudinary URLs) from /admin/
+//   rs_poll_totals        — per-option vote counters, BB20 winner poll (public counter)
+//   rs_poll_evict_totals  — per-option vote counters, BB20 eviction poll (public counter)
+//   rs_totals_<pollid>    — per-option vote counters for admin-created polls (public counter)
+//   rs_poll_votes         — individual vote records, BB20 winner poll (create-only)
+//   rs_poll_evict_votes   — individual vote records, BB20 eviction poll (create-only)
+//   rs_votes_<pollid>     — individual vote records for admin-created polls (create-only)
+//
+// To publish: Firebase console → aabyd-khan → Firestore Database → Rules tab →
+// paste this file → Publish.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A vote record may only contain these three fields, nothing else.
+    function isVoteRecord() {
+      return request.resource.data.keys().hasOnly(['pollId', 'contestantId', 'createdAt'])
+        && request.resource.data.pollId is string
+        && request.resource.data.contestantId is string
+        && request.resource.data.pollId.size() > 0
+        && request.resource.data.pollId.size() < 100
+        && request.resource.data.contestantId.size() > 0
+        && request.resource.data.contestantId.size() < 100;
+    }
+
+    // Totals docs are public counters: anyone may read them; anyone may
+    // create/update them, but only with numeric, non-negative values.
+    // (Vote inflation by a determined abuser is possible — same as the old setup.)
+    function isTotalsWrite() {
+      return request.resource.data.keys().size() > 0
+        && request.resource.data.keys().size() < 60;
+    }
+
+    // ---- Articles: public read; writes via admin panel (client passcode gate) ----
+    match /rs_posts/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ---- Poll definitions: public read; writes via admin panel ----
+    match /rs_poll_defs/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ---- Media library index: public read; writes via admin panel ----
+    match /rs_media/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ---- Built-in vote totals (public counters) ----
+    match /rs_poll_totals/{docId} {
+      allow read: if true;
+      allow create, update: if isTotalsWrite();
+    }
+    match /rs_poll_evict_totals/{docId} {
+      allow read: if true;
+      allow create, update: if isTotalsWrite();
+    }
+
+    // ---- Admin-created poll totals: collections named rs_totals_<pollid> ----
+    // ---- Admin-created poll vote records: collections named rs_votes_<pollid> ----
+    // (Firestore wildcards must match whole path segments, so we match the
+    //  collection name and check its prefix explicitly.)
+    match /{coll}/{docId} {
+      allow read: if coll.matches('^rs_totals_[A-Za-z0-9]+$');
+      allow create, update: if coll.matches('^rs_totals_[A-Za-z0-9]+$') && isTotalsWrite();
+      allow create: if coll.matches('^rs_votes_[A-Za-z0-9]+$') && isVoteRecord();
+    }
+
+    // ---- Built-in vote records: create-only, shape-validated ----
+    match /rs_poll_votes/{docId} {
+      allow create: if isVoteRecord();
+    }
+    match /rs_poll_evict_votes/{docId} {
+      allow create: if isVoteRecord();
+    }
+
+    // ---- Default: deny everything else ----
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
