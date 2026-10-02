@@ -130,3 +130,28 @@ footer.site{border-top:1px solid var(--border);background:var(--bg2);margin-top:
   .foot-in{grid-template-columns:1fr}.hero-in{padding:48px 20px 40px}
   .poll-card{padding:20px}
 }
+/* nav dropdown */
+.dd{position:relative}
+.dd>a::after{content:" \25BE";font-size:.7em}
+.dd-menu{display:none;position:absolute;top:100%;left:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;min-width:230px;padding:6px;z-index:60;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.dd:hover .dd-menu,.dd:focus-within .dd-menu{display:block}
+.dd-menu a{display:block!important;padding:10px 14px!important;border-radius:8px;white-space:nowrap}
+/* danger badge (eviction poll) */
+.opt.danger .opt-name{color:#f87171}
+.opt.danger .opt-name::after{content:"IN DANGER";font-size:.62rem;font-weight:800;letter-spacing:.1em;color:#fff;background:#e5484d;border-radius:6px;padding:3px 8px;margin-left:8px;vertical-align:middle}
+/* show cards */
+.show-card .card-art{font-size:1.6rem;height:150px;text-align:center;padding:0 16px}
+.status-pill{display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#111;background:var(--gold2);border-radius:999px;padding:4px 12px;margin-bottom:10px}
+.status-pill.live{background:#22c55e;color:#04120a}
+.status-pill.soon{background:#a78bfa;color:#12082e}
+/* key facts panel */
+.facts{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 0}
+.fact-row{display:flex;justify-content:space-between;gap:14px;padding:11px 22px;border-bottom:1px solid var(--border);font-size:.92rem}
+.fact-row:last-child{border-bottom:none}
+.fact-row b{color:var(--gold2);font-weight:700;white-space:nowrap}
+.fact-row span{color:var(--muted);text-align:right}
+/* dual poll layout */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.duo .poll-card{margin:0;max-width:none}
+@media(max-width:900px){.duo{grid-template-columns:1fr}}
+.out-badge{color:#f87171!important}
