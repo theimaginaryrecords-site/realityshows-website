@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
 // ---------- countdown to Weekend Ka Vaar (next Saturday 21:00 IST, sample logic) ----------
 function initCountdown(){
-  var el=document.getElementById('ev-countdown'); if(!el) return;
+  var dd0=document.getElementById('cd-d'); if(!dd0) return;
   function next(){ var n=new Date(); var d=new Date(n);
     d.setDate(n.getDate()+((6-n.getDay()+7)%7)); d.setHours(21,0,0,0);
     if(d<=n) d.setDate(d.getDate()+7); return d; }
