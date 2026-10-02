@@ -2,7 +2,7 @@
 // Reality Shows — shared site JS. Firebase loads deferred; everything degrades gracefully.
 (function(){
 "use strict";
-var FB = {"apiKey": "AIzaSyBp9rISkN2oqr8qEa2j9lX7eW4j8vQmZxY0", "authDomain": "tir-portal.firebaseapp.com", "projectId": "tir-portal", "storageBucket": "tir-portal.firebasestorage.app", "messagingSenderId": "941411383328", "appId": "1:941411383328:web:4b7b0aa63e2c7e44d82a445"};
+var FB = {"apiKey": "AIzaSyA68HChTsQowansK8ZUVPEk0_J4lpwC_jQ", "authDomain": "aabyd-khan.firebaseapp.com", "projectId": "aabyd-khan", "storageBucket": "aabyd-khan.firebasestorage.app", "messagingSenderId": "876898185487", "appId": "1:876898185487:web:a790f0d826ff9d67500e7a", "measurementId": "G-QWG3M85FKM"};
 var ADMIN_CODE = "tir2026";
 
 function onFbReady(cb){
@@ -66,16 +66,22 @@ function setVotedDoc(doc,slug){ try{ localStorage.setItem('rs_voted_'+doc,slug);
 
 function initPolls(){
   document.querySelectorAll('[data-poll]').forEach(buildPoll);
+  loadDynPolls();
 }
 function buildPoll(root){
   var raw=root.getAttribute('data-poll');
   var key=pollKey(raw), cfg=POLLS[key];
   if(!cfg){ root.innerHTML='<p style="color:var(--muted)">Poll unavailable.</p>'; return; }
+  renderPoll(root, key, cfg, raw==='mini');
+}
+// Renders any poll config (hardcoded registry or Firestore rs_poll_defs).
+function renderPoll(root, key, cfg, mini){
   var doc=pollDoc(cfg);
-  var opts=cfg.options.slice();
-  if(raw==='mini') opts=opts.slice(0,6);
+  root.setAttribute('data-mini', mini?'1':'');
+  var opts=(cfg.options||[]).slice();
+  if(mini) opts=opts.slice(0,6);
   var voted=votedForDoc(doc);
-  var html='<h3>'+escapeHtml(cfg.title)+'</h3><p class="poll-sub">'+cfg.sub+'</p><div class="poll-opts">';
+  var html='<h3>'+escapeHtml(cfg.title)+'</h3><p class="poll-sub">'+escapeHtml(cfg.sub||'')+'</p><div class="poll-opts">';
   opts.forEach(function(o){
     html+='<div class="opt'+(voted===o.slug?' voted':'')+'" data-slug="'+o.slug+'">'
       +'<div class="opt-top"><span class="opt-name">'+escapeHtml(o.name)+'</span><span class="opt-pct" data-pct>--%</span></div>'
@@ -84,18 +90,42 @@ function buildPoll(root){
       +'</div>';
   });
   html+='</div><div class="poll-total" data-total>Loading votes&hellip;</div>'
-    +'<div class="disclaimer"><strong>Unofficial fan poll.</strong> '+escapeHtml(cfg.disclaimer)+'</div>';
+    +'<div class="disclaimer"><strong>Unofficial fan poll.</strong> '+escapeHtml(cfg.disclaimer||'Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.')+'</div>';
   root.innerHTML=html;
   if(!voted){
     root.querySelectorAll('[data-vote]').forEach(function(btn){
-      btn.addEventListener('click', function(){ castVote(key, doc, btn.getAttribute('data-vote'), root); });
+      btn.addEventListener('click', function(){ castVote(cfg, doc, btn.getAttribute('data-vote'), root); });
     });
   }
-  refreshPoll(root, key, doc, cfg);
-  setInterval(function(){ refreshPoll(root, key, doc, cfg); }, 20000);
+  refreshPoll(root, cfg, doc);
+  setInterval(function(){ refreshPoll(root, cfg, doc); }, 20000);
 }
-function castVote(key, doc, slug, root){
-  var cfg=POLLS[key];
+// Admin-created polls (Firestore rs_poll_defs, active=true) render into [data-dyn-polls] slots.
+function loadDynPolls(){
+  var boxes=document.querySelectorAll('[data-dyn-polls]');
+  if(!boxes.length) return;
+  try{
+    firebase.firestore().collection('rs_poll_defs').where('active','==',true).get().then(function(q){
+      if(q.empty) return;
+      var defs=[];
+      q.forEach(function(d){ var c=d.data(); c._id=d.id; defs.push(c); });
+      boxes.forEach(function(box){
+        var f=box.getAttribute('data-show');
+        var list=defs.filter(function(c){ var s=c.show||'all'; return !f || s==='all' || s===f; });
+        if(!list.length) return;
+        var h='<div class="sec-head"><h2>More <span>Fan Polls</span></h2></div>';
+        box.innerHTML=h;
+        list.forEach(function(cfg){
+          var wrap=document.createElement('div');
+          wrap.className='poll-card'; wrap.style.cssText='margin:0 auto 22px;max-width:720px';
+          box.appendChild(wrap);
+          renderPoll(wrap, 'dyn-'+cfg._id, cfg, false);
+        });
+      });
+    }).catch(function(){});
+  }catch(e){}
+}
+function castVote(cfg, doc, slug, root){
   if(votedForDoc(doc)) return;
   setVotedDoc(doc, slug);
   try{
@@ -105,9 +135,9 @@ function castVote(key, doc, slug, root){
     var rec={pollId:doc, contestantId:slug, createdAt:firebase.firestore.FieldValue.serverTimestamp()};
     db.collection(cfg.votesColl).add(rec);
   }catch(e){}
-  buildPoll(root);
+  renderPoll(root, 're', cfg, root.getAttribute('data-mini')==='1');
 }
-function refreshPoll(root, key, doc, cfg){
+function refreshPoll(root, cfg, doc){
   var counts={}, total=0;
   function render(){
     var opts=root.querySelectorAll('.opt');
@@ -142,7 +172,10 @@ function loadDynPosts(){
       var h='<div class="sec-head"><h2>Fresh <span>Updates</span></h2></div><div class="grid">';
       q.forEach(function(d){
         var p=d.data();
-        h+='<div class="card"><div class="card-art">'+escapeHtml((p.title||'?').slice(0,2).toUpperCase())+'</div>'
+        var art = p.imageUrl
+          ? '<div class="card-art" style="padding:0"><img src="'+escapeHtml(p.imageUrl)+'" alt="" style="width:100%;height:170px;object-fit:cover"/></div>'
+          : '<div class="card-art">'+escapeHtml((p.title||'?').slice(0,2).toUpperCase())+'</div>';
+        h+='<div class="card">'+art
           +'<div class="card-body"><span class="cat">'+escapeHtml(p.category||'News')+'</span>'
           +'<h3>'+escapeHtml(p.title||'')+'</h3><p>'+escapeHtml(p.excerpt||'')+'</p>'
           +'<div class="meta">Reality Shows desk</div></div></div>';
@@ -152,12 +185,12 @@ function loadDynPosts(){
   }catch(e){}
 }
 
-// ---------- admin CMS ----------
+// ---------- admin CMS (full control panel) ----------
 function initAdmin(){
   var root=document.getElementById('admin-root');
   if(sessionStorage.getItem('rs_admin')==='1'){ showPanel(root); return; }
   root.innerHTML='<div class="form-card"><h2 style="font-family:var(--font-d);text-transform:uppercase">Admin Login</h2>'
-    +'<p style="color:var(--muted);font-size:.9rem;margin-top:8px">Enter the site passcode to publish news.</p>'
+    +'<p style="color:var(--muted);font-size:.9rem;margin-top:8px">Enter the site passcode to manage the website.</p>'
     +'<label>Passcode</label><input type="password" id="adm-code" autocomplete="off"/>'
     +'<div style="margin-top:18px"><button class="btn btn-gold" id="adm-go">Unlock</button></div>'
     +'<p id="adm-err" style="color:#f87171;margin-top:10px;display:none">Wrong passcode.</p></div>';
@@ -168,49 +201,339 @@ function initAdmin(){
   });
 }
 function slugify(s){ return s.toLowerCase().trim().replace(/[^a-z0-9\s-]/g,'').replace(/[\s_]+/g,'-').replace(/-+/g,'-').slice(0,80); }
+
+var SHOW_OPTS = [
+  ['bb20','Bigg Boss 20'],['khatron-ke-khiladi','Khatron Ke Khiladi 15'],
+  ['rise-and-fall','Rise and Fall S2'],['lock-upp','Lock Upp'],['roadies','Roadies Rebirth'],
+  ['indias-got-latent',"India's Got Latent"],['indian-idol','Indian Idol 17'],
+  ['splitsvilla','Splitsvilla'],['shark-tank','Shark Tank India'],['other','Other']
+];
+var CAT_OPTS = ['News','Eviction','Controversy','Gossip','TRP & Records','Tasks','Rumours','Fights','Weekend Ka Vaar'];
+function optsHtml(list, sel){ return list.map(function(o){ var v=o[0]||o, l=o[1]||o; return '<option value="'+v+'"'+(v===sel?' selected':'')+'>'+escapeHtml(l)+'</option>'; }).join(''); }
+function showName(v){ var f=SHOW_OPTS.filter(function(o){return o[0]===v;}); return f.length?f[0][1]:(v||'—'); }
+
 function showPanel(root){
-  root.innerHTML='<div class="form-card"><h2 style="font-family:var(--font-d);text-transform:uppercase">Publish News</h2>'
-    +'<label>Title</label><input type="text" id="p-title"/>'
-    +'<label>Category</label><select id="p-cat"><option>News</option><option>Eviction</option><option>Fights</option><option>Tasks</option><option>Rumours</option><option>Weekend Ka Vaar</option><option>TRP &amp; Records</option><option>Gossip</option><option>Controversy</option><option>KKK15</option><option>Rise &amp; Fall</option><option>Lock Upp</option><option>Roadies</option><option>Latent</option><option>Indian Idol</option><option>Splitsvilla</option><option>Shark Tank</option></select>'
-    +'<label>Excerpt</label><input type="text" id="p-excerpt"/>'
-    +'<label>Body (plain text, blank line = new paragraph)</label><textarea id="p-body"></textarea>'
-    +'<div style="margin-top:18px"><button class="btn btn-gold" id="p-pub">Publish</button></div>'
-    +'<p id="p-msg" style="margin-top:10px;color:var(--muted)"></p></div>'
-    +'<div class="form-card" style="margin-top:24px"><h2 style="font-family:var(--font-d);text-transform:uppercase">Published Posts</h2><div id="p-list"><p style="color:var(--muted)">Loading&hellip;</p></div></div>';
-  document.getElementById('p-pub').addEventListener('click', function(){
-    var t=document.getElementById('p-title').value.trim();
-    if(!t){ document.getElementById('p-msg').textContent='Title is required.'; return; }
-    var body=document.getElementById('p-body').value.trim().split(/\n\s*\n/).map(function(p){return '<p>'+escapeHtml(p).replace(/\n/g,'<br>')+'</p>';}).join('\n');
-    var doc={ title:t, slug:slugify(t), category:document.getElementById('p-cat').value,
-      excerpt:document.getElementById('p-excerpt').value.trim(), body:body,
-      createdAt:firebase.firestore.FieldValue.serverTimestamp(), published:true };
-    document.getElementById('p-msg').textContent='Publishing…';
-    firebase.firestore().collection('rs_posts').add(doc).then(function(){
-      document.getElementById('p-msg').textContent='Published! It will appear under Fresh Updates on /news/.';
-      document.getElementById('p-title').value='';document.getElementById('p-excerpt').value='';document.getElementById('p-body').value='';
-      listPosts();
-    }).catch(function(e){ document.getElementById('p-msg').textContent='Error: '+e.message; });
+  root.innerHTML='<div class="form-card" style="max-width:860px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-family:var(--font-d);text-transform:uppercase">Site Control</h2>'
+    +'<button class="btn-sm" id="adm-lock">Lock</button></div>'
+    +'<div class="tabs" style="margin-top:16px">'
+    +'<button class="tab-btn active" data-tab="articles">Articles</button>'
+    +'<button class="tab-btn" data-tab="polls">Polls</button>'
+    +'<button class="tab-btn" data-tab="media">Media</button>'
+    +'<button class="tab-btn" data-tab="info">Info</button>'
+    +'</div><div id="tab-body"></div></div>';
+  document.getElementById('adm-lock').addEventListener('click', function(){
+    sessionStorage.removeItem('rs_admin'); initAdmin();
   });
-  listPosts();
+  var tabs=root.querySelectorAll('.tab-btn');
+  tabs.forEach(function(b){ b.addEventListener('click', function(){
+    tabs.forEach(function(x){x.classList.remove('active');}); b.classList.add('active');
+    renderTab(b.getAttribute('data-tab'));
+  }); });
+  renderTab('articles');
 }
-function listPosts(){
-  var box=document.getElementById('p-list'); if(!box) return;
-  firebase.firestore().collection('rs_posts').orderBy('createdAt','desc').limit(30).get().then(function(q){
-    if(q.empty){ box.innerHTML='<p style="color:var(--muted)">No posts yet.</p>'; return; }
+function renderTab(t){
+  if(t==='articles') tabArticles();
+  else if(t==='polls') tabPolls();
+  else if(t==='media') tabMedia();
+  else tabInfo();
+}
+function uploadToStorage(file, onProg){
+  var safe=file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
+  var ref=firebase.storage().ref('rs-media/'+Date.now()+'-'+safe);
+  var task=ref.put(file);
+  return new Promise(function(res, rej){
+    task.on('state_changed', function(snap){
+      if(onProg) onProg(Math.round(snap.bytesTransferred/snap.totalBytes*100));
+    }, rej, function(){ ref.getDownloadURL().then(res, rej); });
+  });
+}
+function copyText(t, btn){
+  function done(){ var o=btn.textContent; btn.textContent='Copied!'; setTimeout(function(){btn.textContent=o;},1500); }
+  function fallback(){ var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');done();}catch(e){} document.body.removeChild(ta); }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done).catch(fallback); }
+  else fallback();
+}
+
+// ================= ARTICLES =================
+var editingArticle=null, articleImageUrl='';
+function tabArticles(){
+  var box=document.getElementById('tab-body');
+  box.innerHTML='<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:6px" id="art-form-title">New Article</h3>'
+    +'<label>Title</label><input type="text" id="a-title"/>'
+    +'<label>Show</label><select id="a-show">'+optsHtml(SHOW_OPTS,'bb20')+'</select>'
+    +'<label>Category</label><select id="a-cat">'+optsHtml(CAT_OPTS,'News')+'</select>'
+    +'<label>Excerpt</label><input type="text" id="a-excerpt"/>'
+    +'<label>Body (plain text, blank line = new paragraph)</label><textarea id="a-body"></textarea>'
+    +'<label>Featured image</label><input type="file" id="a-file" accept="image/*"/>'
+    +'<div class="prog" id="a-prog" style="display:none"><i></i></div>'
+    +'<div id="a-preview"></div>'
+    +'<label style="display:flex;align-items:center;gap:10px;margin-top:14px"><input type="checkbox" id="a-pub" checked style="width:auto"/> Published</label>'
+    +'<div class="btn-row"><button class="btn btn-gold" id="a-save">Publish</button>'
+    +'<button class="btn-sm" id="a-cancel" style="display:none">Cancel edit</button></div>'
+    +'<p id="a-msg" style="margin-top:10px;color:var(--muted)"></p>'
+    +'<hr style="border:none;border-top:1px solid var(--border);margin:26px 0"/>'
+    +'<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:10px">All Articles</h3><div id="a-list"><p style="color:var(--muted)">Loading…</p></div>';
+  document.getElementById('a-file').addEventListener('change', function(e){
+    var f=e.target.files[0]; if(!f) return;
+    var prog=document.getElementById('a-prog'); prog.style.display='block';
+    var bar=prog.querySelector('i');
+    uploadToStorage(f, function(p){ bar.style.width=p+'%'; }).then(function(url){
+      articleImageUrl=url;
+      document.getElementById('a-preview').innerHTML='<img class="img-preview" src="'+escapeHtml(url)+'" alt=""/>';
+      document.getElementById('a-msg').textContent='Image uploaded.';
+    }).catch(function(err){ document.getElementById('a-msg').textContent='Upload failed: '+err.message; });
+  });
+  document.getElementById('a-save').addEventListener('click', saveArticle);
+  document.getElementById('a-cancel').addEventListener('click', function(){ resetArticleForm(); });
+  listArticles();
+}
+function bodyToHtml(t){ return t.trim().split(/\n\s*\n/).map(function(p){return '<p>'+escapeHtml(p).replace(/\n/g,'<br>')+'</p>';}).join('\n'); }
+function htmlToBody(h){ return h.replace(/<br\s*\/?>/gi,'\n').replace(/<\/p>\s*<p>/gi,'\n\n').replace(/<\/?p[^>]*>/gi,'').replace(/<[^>]+>/g,'').trim(); }
+function saveArticle(){
+  var t=document.getElementById('a-title').value.trim();
+  if(!t){ document.getElementById('a-msg').textContent='Title is required.'; return; }
+  var doc={ title:t, slug:slugify(t), show:document.getElementById('a-show').value,
+    category:document.getElementById('a-cat').value, excerpt:document.getElementById('a-excerpt').value.trim(),
+    body:bodyToHtml(document.getElementById('a-body').value),
+    imageUrl:articleImageUrl||'',
+    published:document.getElementById('a-pub').checked,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp() };
+  var msg=document.getElementById('a-msg'); msg.textContent='Saving…';
+  var coll=firebase.firestore().collection('rs_posts');
+  var p;
+  if(editingArticle){ p=coll.doc(editingArticle).update(doc); }
+  else { doc.createdAt=firebase.firestore.FieldValue.serverTimestamp(); p=coll.add(doc); }
+  p.then(function(){ msg.textContent=editingArticle?'Updated!':'Published — live under Fresh Updates on /news/.'; resetArticleForm(); listArticles(); })
+   .catch(function(e){ msg.textContent='Error: '+e.message; });
+}
+function resetArticleForm(){
+  editingArticle=null; articleImageUrl='';
+  document.getElementById('a-title').value=''; document.getElementById('a-excerpt').value='';
+  document.getElementById('a-body').value=''; document.getElementById('a-file').value='';
+  document.getElementById('a-preview').innerHTML=''; document.getElementById('a-pub').checked=true;
+  document.getElementById('art-form-title').textContent='New Article';
+  document.getElementById('a-save').textContent='Publish';
+  document.getElementById('a-cancel').style.display='none';
+  document.getElementById('a-msg').textContent='';
+}
+function listArticles(){
+  var box=document.getElementById('a-list'); if(!box) return;
+  firebase.firestore().collection('rs_posts').orderBy('createdAt','desc').limit(50).get().then(function(q){
+    if(q.empty){ box.innerHTML='<p style="color:var(--muted)">No articles yet.</p>'; return; }
     var h='';
     q.forEach(function(d){
       var p=d.data();
-      h+='<div class="post-row"><div><b>'+escapeHtml(p.title||'(untitled)')+'</b><br><span style="color:var(--muted);font-size:.8rem">'+escapeHtml(p.category||'')+'</span></div>'
-        +'<button data-del="'+d.id+'">Delete</button></div>';
+      var dt=p.createdAt&&p.createdAt.toDate?p.createdAt.toDate().toLocaleDateString('en-IN'):'—';
+      h+='<div class="post-row"><div><b>'+escapeHtml(p.title||'(untitled)')+'</b>'
+        +'<span class="badge '+(p.published?'on':'off')+'">'+(p.published?'Live':'Draft')+'</span>'
+        +'<br><span style="color:var(--muted);font-size:.8rem">'+escapeHtml(p.category||'')+' · '+escapeHtml(showName(p.show))+' · '+dt+'</span></div>'
+        +'<div class="btn-row" style="margin:0"><button class="btn-sm gold" data-edit="'+d.id+'">Edit</button>'
+        +'<button class="btn-sm danger" data-delart="'+d.id+'">Delete</button></div></div>';
     });
     box.innerHTML=h;
-    box.querySelectorAll('[data-del]').forEach(function(b){
+    box.querySelectorAll('[data-delart]').forEach(function(b){
       b.addEventListener('click', function(){
-        if(!confirm('Delete this post?')) return;
-        firebase.firestore().collection('rs_posts').doc(b.getAttribute('data-del')).delete().then(listPosts);
+        if(!confirm('Delete this article?')) return;
+        firebase.firestore().collection('rs_posts').doc(b.getAttribute('data-delart')).delete().then(listArticles);
       });
     });
-  }).catch(function(e){ box.innerHTML='<p style="color:#f87171">Could not load posts: '+escapeHtml(e.message)+'</p>'; });
+    box.querySelectorAll('[data-edit]').forEach(function(b){
+      b.addEventListener('click', function(){ editArticle(b.getAttribute('data-edit')); });
+    });
+  }).catch(function(e){ box.innerHTML='<p style="color:#f87171">Could not load: '+escapeHtml(e.message)+'</p>'; });
+}
+function editArticle(id){
+  firebase.firestore().collection('rs_posts').doc(id).get().then(function(d){
+    if(!d.exists) return;
+    var p=d.data(); editingArticle=id; articleImageUrl=p.imageUrl||'';
+    document.getElementById('a-title').value=p.title||'';
+    document.getElementById('a-show').value=p.show||'bb20';
+    document.getElementById('a-cat').value=p.category||'News';
+    document.getElementById('a-excerpt').value=p.excerpt||'';
+    document.getElementById('a-body').value=htmlToBody(p.body||'');
+    document.getElementById('a-pub').checked=!!p.published;
+    document.getElementById('a-preview').innerHTML=articleImageUrl?'<img class="img-preview" src="'+escapeHtml(articleImageUrl)+'" alt=""/>':'';
+    document.getElementById('art-form-title').textContent='Edit Article';
+    document.getElementById('a-save').textContent='Update';
+    document.getElementById('a-cancel').style.display='inline-block';
+    window.scrollTo(0,0);
+  });
+}
+
+// ================= POLLS =================
+var editingPoll=null;
+function tabPolls(){
+  var box=document.getElementById('tab-body');
+  box.innerHTML='<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:6px" id="pl-form-title">New Poll</h3>'
+    +'<label>Question</label><input type="text" id="pl-title" placeholder="Who will win…?"/>'
+    +'<label>Subtitle</label><input type="text" id="pl-sub" placeholder="One vote per device."/>'
+    +'<label>Show</label><select id="pl-show">'+optsHtml(SHOW_OPTS,'bb20')+'<option value="all">All shows</option></select>'
+    +'<label>Poll type</label><select id="pl-type"><option value="standard">Standard</option><option value="winner">Winner prediction</option><option value="weekly-eviction">Weekly eviction (resets Monday + danger highlight)</option></select>'
+    +'<label>Options</label><div id="pl-opts"></div>'
+    +'<button class="btn-sm gold" id="pl-addopt" type="button">+ Add option</button>'
+    +'<label style="display:flex;align-items:center;gap:10px;margin-top:14px"><input type="checkbox" id="pl-active" checked style="width:auto"/> Active (visible on site)</label>'
+    +'<div class="btn-row"><button class="btn btn-gold" id="pl-save">Create Poll</button>'
+    +'<button class="btn-sm" id="pl-cancel" style="display:none">Cancel edit</button></div>'
+    +'<p id="pl-msg" style="margin-top:10px;color:var(--muted)"></p>'
+    +'<hr style="border:none;border-top:1px solid var(--border);margin:26px 0"/>'
+    +'<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:10px">Custom Polls</h3><div id="pl-list"><p style="color:var(--muted)">Loading…</p></div>';
+  addPollOpt(); addPollOpt();
+  document.getElementById('pl-addopt').addEventListener('click', function(){ addPollOpt(); });
+  document.getElementById('pl-save').addEventListener('click', savePoll);
+  document.getElementById('pl-cancel').addEventListener('click', function(){ resetPollForm(); });
+  listPolls();
+}
+function addPollOpt(val){
+  var d=document.createElement('div'); d.className='opt-input';
+  d.innerHTML='<input type="text" placeholder="Option name" value="'+escapeHtml(val||'')+'"/><button class="btn-sm danger" type="button">✕</button>';
+  d.querySelector('button').addEventListener('click', function(){ d.remove(); });
+  document.getElementById('pl-opts').appendChild(d);
+}
+function savePoll(){
+  var title=document.getElementById('pl-title').value.trim();
+  if(!title){ document.getElementById('pl-msg').textContent='Question is required.'; return; }
+  var names=[].map.call(document.querySelectorAll('#pl-opts input'), function(i){return i.value.trim();}).filter(Boolean);
+  if(names.length<2){ document.getElementById('pl-msg').textContent='Add at least 2 options.'; return; }
+  var type=document.getElementById('pl-type').value;
+  var options=names.map(function(n){ return {slug:slugify(n), name:n}; });
+  var msg=document.getElementById('pl-msg'); msg.textContent='Saving…';
+  var db=firebase.firestore();
+  var id = editingPoll || db.collection('rs_poll_defs').doc().id;
+  var doc={ title:title, sub:document.getElementById('pl-sub').value.trim(),
+    show:document.getElementById('pl-show').value, pollType:type,
+    weekly:(type==='weekly-eviction'), danger:(type==='weekly-eviction'),
+    active:document.getElementById('pl-active').checked,
+    options:options, doc:id, votesColl:'rs_votes_'+id, totalsColl:'rs_totals_'+id,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp() };
+  var p = editingPoll
+    ? db.collection('rs_poll_defs').doc(id).update(doc)
+    : (doc.createdAt=firebase.firestore.FieldValue.serverTimestamp(), db.collection('rs_poll_defs').doc(id).set(doc));
+  p.then(function(){ msg.textContent=editingPoll?'Poll updated!':'Poll created — live on the site now.'; resetPollForm(); listPolls(); })
+   .catch(function(e){ msg.textContent='Error: '+e.message; });
+}
+function resetPollForm(){
+  editingPoll=null;
+  document.getElementById('pl-title').value=''; document.getElementById('pl-sub').value='';
+  document.getElementById('pl-opts').innerHTML=''; addPollOpt(); addPollOpt();
+  document.getElementById('pl-active').checked=true;
+  document.getElementById('pl-form-title').textContent='New Poll';
+  document.getElementById('pl-save').textContent='Create Poll';
+  document.getElementById('pl-cancel').style.display='none';
+  document.getElementById('pl-msg').textContent='';
+}
+function listPolls(){
+  var box=document.getElementById('pl-list'); if(!box) return;
+  firebase.firestore().collection('rs_poll_defs').orderBy('createdAt','desc').limit(50).get().then(function(q){
+    if(q.empty){ box.innerHTML='<p style="color:var(--muted)">No custom polls yet. The built-in polls (BB20, KKK, etc.) are always live.</p>'; return; }
+    var h='';
+    q.forEach(function(d){
+      var p=d.data();
+      h+='<div class="post-row"><div><b>'+escapeHtml(p.title||'(untitled)')+'</b>'
+        +'<span class="badge '+(p.active?'on':'off')+'">'+(p.active?'Active':'Hidden')+'</span>'
+        +'<br><span style="color:var(--muted);font-size:.8rem">'+escapeHtml(p.pollType||'standard')+' · '+escapeHtml(showName(p.show))+' · '+(p.options||[]).length+' options</span></div>'
+        +'<div class="btn-row" style="margin:0"><button class="btn-sm gold" data-editpl="'+d.id+'">Edit</button>'
+        +'<button class="btn-sm" data-togglepl="'+d.id+'">'+(p.active?'Hide':'Show')+'</button>'
+        +'<button class="btn-sm danger" data-delpl="'+d.id+'">Delete</button></div></div>';
+    });
+    box.innerHTML=h;
+    box.querySelectorAll('[data-delpl]').forEach(function(b){
+      b.addEventListener('click', function(){
+        if(!confirm('Delete this poll? Past votes stay in the database, but the poll disappears from the site.')) return;
+        firebase.firestore().collection('rs_poll_defs').doc(b.getAttribute('data-delpl')).delete().then(listPolls);
+      });
+    });
+    box.querySelectorAll('[data-togglepl]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var ref=firebase.firestore().collection('rs_poll_defs').doc(b.getAttribute('data-togglepl'));
+        ref.get().then(function(d){ return ref.update({active:!d.data().active}); }).then(listPolls);
+      });
+    });
+    box.querySelectorAll('[data-editpl]').forEach(function(b){
+      b.addEventListener('click', function(){ editPoll(b.getAttribute('data-editpl')); });
+    });
+  }).catch(function(e){ box.innerHTML='<p style="color:#f87171">Could not load: '+escapeHtml(e.message)+'</p>'; });
+}
+function editPoll(id){
+  firebase.firestore().collection('rs_poll_defs').doc(id).get().then(function(d){
+    if(!d.exists) return;
+    var p=d.data(); editingPoll=id;
+    document.getElementById('pl-title').value=p.title||'';
+    document.getElementById('pl-sub').value=p.sub||'';
+    document.getElementById('pl-show').value=p.show||'bb20';
+    document.getElementById('pl-type').value=p.pollType||'standard';
+    document.getElementById('pl-opts').innerHTML='';
+    (p.options||[]).forEach(function(o){ addPollOpt(o.name); });
+    document.getElementById('pl-active').checked=!!p.active;
+    document.getElementById('pl-form-title').textContent='Edit Poll';
+    document.getElementById('pl-save').textContent='Update Poll';
+    document.getElementById('pl-cancel').style.display='inline-block';
+    window.scrollTo(0,0);
+  });
+}
+
+// ================= MEDIA =================
+function tabMedia(){
+  var box=document.getElementById('tab-body');
+  box.innerHTML='<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:6px">Upload Media</h3>'
+    +'<p style="color:var(--muted);font-size:.9rem">Images and videos for articles. Stored in Firebase Storage (rs-media/).</p>'
+    +'<label>Choose file</label><input type="file" id="m-file" accept="image/*,video/*"/>'
+    +'<div class="prog" id="m-prog" style="display:none"><i></i></div>'
+    +'<p id="m-msg" style="margin-top:10px;color:var(--muted)"></p>'
+    +'<hr style="border:none;border-top:1px solid var(--border);margin:26px 0"/>'
+    +'<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:10px">Uploaded Files</h3><div id="m-grid" class="media-grid"><p style="color:var(--muted)">Loading…</p></div>';
+  document.getElementById('m-file').addEventListener('change', function(e){
+    var f=e.target.files[0]; if(!f) return;
+    var prog=document.getElementById('m-prog'); prog.style.display='block';
+    var bar=prog.querySelector('i');
+    uploadToStorage(f, function(p){ bar.style.width=p+'%'; }).then(function(url){
+      document.getElementById('m-msg').textContent='Uploaded! Copy its URL below.';
+      e.target.value=''; listMedia();
+    }).catch(function(err){ document.getElementById('m-msg').textContent='Upload failed: '+err.message; });
+  });
+  listMedia();
+}
+function listMedia(){
+  var box=document.getElementById('m-grid'); if(!box) return;
+  firebase.storage().ref('rs-media/').listAll().then(function(res){
+    if(!res.items.length){ box.innerHTML='<p style="color:var(--muted)">No files yet.</p>'; return; }
+    box.innerHTML='';
+    res.items.slice().reverse().forEach(function(item){
+      var card=document.createElement('div'); card.className='media-item';
+      card.innerHTML='<div style="height:110px;display:flex;align-items:center;justify-content:center;background:#0e0e15;color:var(--muted)">…</div>'
+        +'<div class="mi-body"><div class="mi-name">'+escapeHtml(item.name)+'</div>'
+        +'<div class="btn-row" style="margin:0"><button class="btn-sm gold">Copy URL</button>'
+        +'<button class="btn-sm danger">Delete</button></div></div>';
+      box.appendChild(card);
+      var ph=card.firstChild;
+      item.getDownloadURL().then(function(url){
+        if(/\.(jpg|jpeg|png|gif|webp)$/i.test(item.name)){ ph.innerHTML='<img src="'+escapeHtml(url)+'" alt=""/>'; }
+        else { ph.innerHTML='<span style="font-size:2rem">🎬</span>'; }
+        card.querySelector('.btn-sm.gold').addEventListener('click', function(){ copyText(url, this); });
+      });
+      card.querySelector('.btn-sm.danger').addEventListener('click', function(){
+        if(!confirm('Delete this file? Articles using it will break.')) return;
+        item.delete().then(listMedia).catch(function(e){ alert('Delete failed: '+e.message); });
+      });
+    });
+  }).catch(function(e){ box.innerHTML='<p style="color:#f87171">Could not list files: '+escapeHtml(e.message)+'</p>'; });
+}
+
+// ================= INFO =================
+function tabInfo(){
+  var box=document.getElementById('tab-body');
+  box.innerHTML='<h3 style="font-family:var(--font-d);text-transform:uppercase;margin-bottom:10px">Project Info</h3>'
+    +'<div class="facts">'
+    +'<div class="fact-row"><b>Firebase project</b><span>aabyd-khan</span></div>'
+    +'<div class="fact-row"><b>Region</b><span>asia-south1 (Mumbai)</span></div>'
+    +'<div class="fact-row"><b>Articles</b><span>rs_posts</span></div>'
+    +'<div class="fact-row"><b>Poll definitions</b><span>rs_poll_defs</span></div>'
+    +'<div class="fact-row"><b>Vote records</b><span>rs_poll_votes · rs_poll_evict_votes · rs_votes_*</span></div>'
+    +'<div class="fact-row"><b>Vote totals</b><span>rs_poll_totals · rs_poll_evict_totals · rs_totals_*</span></div>'
+    +'<div class="fact-row"><b>Media</b><span>Storage: rs-media/</span></div>'
+    +'</div>'
+    +'<div class="note">Admin writes are protected by the site passcode (client-side gate). Publish the Firestore + Storage rules from <b>firestore.rules</b> / <b>storage.rules</b> in the Firebase console for the intended access model, and never share the passcode.</div>'
+    +'<div class="btn-row"><a class="btn btn-ghost" href="https://console.firebase.google.com/project/aabyd-khan/firestore" target="_blank" rel="noopener">Open Firebase Console</a></div>';
 }
 })();
 
