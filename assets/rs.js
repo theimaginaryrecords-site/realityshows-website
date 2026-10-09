@@ -173,12 +173,15 @@ function refreshPoll(root, cfg, doc){
 function loadDynPosts(){
   var box=document.getElementById('dyn-posts'); if(!box) return;
   try{
-    firebase.firestore().collection('rs_posts').where('published','==',true)
+    firebase.firestore().collection('rs_posts')
       .orderBy('createdAt','desc').limit(10).get().then(function(q){
       if(q.empty) return;
       var h='<div class="sec-head"><h2>Fresh <span>Updates</span></h2></div><div class="grid">';
+      var n=0;
       q.forEach(function(d){
         var p=d.data();
+        if(!p.published) return;
+        n++;
         var art = p.imageUrl
           ? '<div class="card-art" style="padding:0"><img src="'+escapeHtml(p.imageUrl)+'" alt="" style="width:100%;height:170px;object-fit:cover"/></div>'
           : '<div class="card-art">'+escapeHtml((p.title||'?').slice(0,2).toUpperCase())+'</div>';
@@ -187,6 +190,7 @@ function loadDynPosts(){
           +'<h3>'+escapeHtml(p.title||'')+'</h3><p>'+escapeHtml(p.excerpt||'')+'</p>'
           +'<div class="meta">Reality Shows desk</div></div></div>';
       });
+      if(!n) return;
       box.innerHTML=h+'</div>';
     }).catch(function(){});
   }catch(e){}
