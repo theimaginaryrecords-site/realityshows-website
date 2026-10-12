@@ -95,6 +95,15 @@ section.block{padding:56px 0}
 .article .meta{color:var(--muted);font-size:.85rem;margin-bottom:26px}
 .article p{color:#d4d4d8;margin-bottom:1.3rem;font-size:1.05rem;line-height:1.85}
 .article p strong{color:var(--gold2)}
+/* share buttons */
+.share-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:38px 0 8px;padding:20px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.02)}
+.share-label{font-family:var(--font-d);text-transform:uppercase;letter-spacing:.06em;font-size:.85rem;color:var(--gold2);margin-right:6px}
+.share-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;font-size:.85rem;font-weight:600;border:1px solid var(--border);color:#e4e4e7;background:#18181b;cursor:pointer;text-decoration:none;transition:transform .15s,opacity .15s}
+.share-btn:hover{transform:translateY(-2px);opacity:.92;color:#fff}
+.share-btn.wa{background:#1f9d55;border-color:#1f9d55;color:#fff}
+.share-btn.tg{background:#229ed9;border-color:#229ed9;color:#fff}
+.share-btn.fb{background:#1877f2;border-color:#1877f2;color:#fff}
+.share-btn.x{background:#000;border-color:#333;color:#fff}
 .back-link{display:inline-block;margin-bottom:8px;font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
 /* profile */
 .profile-hero{text-align:center;padding:56px 20px 30px}

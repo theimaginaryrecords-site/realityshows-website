@@ -23,6 +23,16 @@ function initFb(){
 document.addEventListener('DOMContentLoaded', function(){
   var b=document.getElementById('burger'), m=document.getElementById('mobmenu');
   if(b&&m){ b.addEventListener('click', function(){ m.classList.toggle('open'); }); }
+  // copy-link share buttons (event delegation so it works on every article page)
+  document.addEventListener('click', function(e){
+    var t=e.target.closest?e.target.closest('[data-copy-link]'):null;
+    if(!t) return;
+    var url=t.getAttribute('data-copy-link');
+    var done=function(){ var s=t.querySelector('span'); var old=s?s.textContent:''; if(s)s.textContent='Copied!'; t.style.borderColor='var(--gold2)'; setTimeout(function(){ if(s)s.textContent=old||'Copy link'; t.style.borderColor=''; },1600); };
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(done).catch(function(){ fallbackCopy(url); done(); }); }
+    else { fallbackCopy(url); done(); }
+  });
+  function fallbackCopy(url){ var i=document.createElement('input'); i.value=url; document.body.appendChild(i); i.select(); try{document.execCommand('copy');}catch(_){} document.body.removeChild(i); }
   initFb();
   onFbReady(function(){ initPolls(); initCountdown(); });
   // admin page boots itself
@@ -185,10 +195,11 @@ function loadDynPosts(){
         var art = p.imageUrl
           ? '<div class="card-art" style="padding:0"><img src="'+escapeHtml(p.imageUrl)+'" alt="" style="width:100%;height:170px;object-fit:cover"/></div>'
           : '<div class="card-art">'+escapeHtml((p.title||'?').slice(0,2).toUpperCase())+'</div>';
-        h+='<div class="card">'+art
+        var href = p.slug ? '/news/'+encodeURIComponent(p.slug)+'/' : '#';
+        h+='<a class="card" href="'+href+'">'+art
           +'<div class="card-body"><span class="cat">'+escapeHtml(p.category||'News')+'</span>'
           +'<h3>'+escapeHtml(p.title||'')+'</h3><p>'+escapeHtml(p.excerpt||'')+'</p>'
-          +'<div class="meta">Reality Shows desk</div></div></div>';
+          +'<div class="meta">Reality Shows desk &middot; Read full story &rarr;</div></div></a>';
       });
       if(!n) return;
       box.innerHTML=h+'</div>';
