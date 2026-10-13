@@ -222,7 +222,6 @@ function loadDynPosts(){
     tries++;
     try{
       firebase.firestore().collection('rs_posts')
-        .select('title','slug','excerpt','category','published','imageUrl','createdAt')
         .orderBy('createdAt','desc').limit(10).get().then(function(q){
         if(q.empty){ box.style.display='none'; return; }
         var h='', n=0;
