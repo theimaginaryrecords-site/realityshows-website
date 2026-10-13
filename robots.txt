@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://realityshows.in/sitemap.xml
+Sitemap: https://realityshows.in/news-sitemap.xml
