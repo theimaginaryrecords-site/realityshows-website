@@ -230,7 +230,7 @@ function loadDynPosts(){
           if(!p.published) return;
           n++;
           var art = p.imageUrl
-            ? '<div class="card-art" style="padding:0"><img src="'+escapeHtml(p.imageUrl)+'" alt="'+escapeHtml(p.title||'')+'" loading="lazy" style="width:100%;height:170px;object-fit:cover;display:block"/>'
+            ? '<div class="card-art" style="padding:0;overflow:hidden"><img src="'+escapeHtml(p.imageUrl)+'" alt="'+escapeHtml(p.title||'')+'" loading="lazy" style="width:100%;height:170px;object-fit:cover;display:block"/></div>'
             : '<div class="card-art">'+escapeHtml((p.title||'?').replace(/^[^A-Za-z]+/,'').slice(0,2).toUpperCase())+'</div>';
           var href = p.slug ? '/news/'+encodeURIComponent(p.slug)+'/' : '#';
           h+='<a class="card" href="'+href+'">'+art
