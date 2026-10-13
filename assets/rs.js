@@ -211,43 +211,43 @@ function refreshPoll(root, cfg, doc){
 function dynDate(ts){
   try{
     var d=ts&&ts.toDate?ts.toDate():new Date(ts);
-    return d.toLocaleDateString(\'en-IN\',{day:\'numeric\',month:\'short\',year:\'numeric\'});
-  }catch(e){ return \'\'; }
+    return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  }catch(e){ return ''; }
 }
 function loadDynPosts(){
-  var box=document.getElementById(\'dyn-posts\'); if(!box) return;
-  var grid=box.querySelector(\'.grid\'); if(!grid) return;
+  var box=document.getElementById('dyn-posts'); if(!box) return;
+  var grid=box.querySelector('.grid'); if(!grid) return;
   var tries=0;
   function attempt(){
     tries++;
     try{
-      firebase.firestore().collection(\'rs_posts\')
-        .select(\'title\',\'slug\',\'excerpt\',\'category\',\'published\',\'imageUrl\',\'createdAt\')
-        .orderBy(\'createdAt\',\'desc\').limit(10).get().then(function(q){
-        if(q.empty){ box.style.display=\'none\'; return; }
-        var h=\'\', n=0;
+      firebase.firestore().collection('rs_posts')
+        .select('title','slug','excerpt','category','published','imageUrl','createdAt')
+        .orderBy('createdAt','desc').limit(10).get().then(function(q){
+        if(q.empty){ box.style.display='none'; return; }
+        var h='', n=0;
         q.forEach(function(d){
           var p=d.data();
           if(!p.published) return;
           n++;
           var art = p.imageUrl
-            ? \'<div class="card-art" style="padding:0"><img src="\'+escapeHtml(p.imageUrl)+\'" alt="\'+escapeHtml(p.title||\'\')+\'" loading="lazy" style="width:100%;height:170px;object-fit:cover;display:block"/>\'
-            : \'<div class="card-art">\'+escapeHtml((p.title||\'?\').replace(/^[^A-Za-z]+/,\'\').slice(0,2).toUpperCase())+\'</div>\';
-          var href = p.slug ? \'/news/\'+encodeURIComponent(p.slug)+\'/\' : \'#\';
-          h+=\'<a class="card" href="\'+href+\'">\'+art
-            +\'<div class="card-body"><span class="cat">\'+escapeHtml(p.category||\'News\')+\'</span>\'
-            +\'<h3>\'+escapeHtml(p.title||\'\')+\'</h3><p>\'+escapeHtml(p.excerpt||\'\')+\'</p>\'
-            +\'<div class="meta">\'+dynDate(p.createdAt)+\' &middot; Aabid Khan</div></div></a>\';
+            ? '<div class="card-art" style="padding:0"><img src="'+escapeHtml(p.imageUrl)+'" alt="'+escapeHtml(p.title||'')+'" loading="lazy" style="width:100%;height:170px;object-fit:cover;display:block"/>'
+            : '<div class="card-art">'+escapeHtml((p.title||'?').replace(/^[^A-Za-z]+/,'').slice(0,2).toUpperCase())+'</div>';
+          var href = p.slug ? '/news/'+encodeURIComponent(p.slug)+'/' : '#';
+          h+='<a class="card" href="'+href+'">'+art
+            +'<div class="card-body"><span class="cat">'+escapeHtml(p.category||'News')+'</span>'
+            +'<h3>'+escapeHtml(p.title||'')+'</h3><p>'+escapeHtml(p.excerpt||'')+'</p>'
+            +'<div class="meta">'+dynDate(p.createdAt)+' &middot; Aabid Khan</div></div></a>';
         });
-        if(!n){ box.style.display=\'none\'; return; }
-        grid.innerHTML=h; grid.style.display=\'\';
+        if(!n){ box.style.display='none'; return; }
+        grid.innerHTML=h; grid.style.display='';
       }).catch(function(){
         if(tries<3){ setTimeout(attempt, 1200*tries); }
-        else { box.style.display=\'none\'; }
+        else { box.style.display='none'; }
       });
     }catch(e){
       if(tries<3){ setTimeout(attempt, 1200*tries); }
-      else { box.style.display=\'none\'; }
+      else { box.style.display='none'; }
     }
   }
   attempt();
