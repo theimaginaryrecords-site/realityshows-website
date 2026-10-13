@@ -103,6 +103,7 @@ function renderPoll(root, key, cfg, mini){
       +'</div>';
   });
   html+='</div><div class="poll-total" data-total>Loading votes&hellip;</div>'
+    +(mini?'<div style="margin:10px 0 2px"><a href="/voting/" style="color:var(--gold);font-weight:700;font-size:.9rem">See all '+(cfg.options||[]).length+' options in the full poll &rarr;</a></div>':'')
     +'<div class="disclaimer"><strong>Unofficial fan poll.</strong> '+escapeHtml(cfg.disclaimer||'Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.')+'</div>';
   root.innerHTML=html;
   if(!voted){
