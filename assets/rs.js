@@ -23,6 +23,18 @@ function initFb(){
 document.addEventListener('DOMContentLoaded', function(){
   var b=document.getElementById('burger'), m=document.getElementById('mobmenu');
   if(b&&m){ b.addEventListener('click', function(){ m.classList.toggle('open'); }); }
+  // touch: first tap on "More" opens the dropdown instead of navigating
+  document.querySelectorAll('.dd > a').forEach(function(a){
+    a.addEventListener('click', function(e){
+      var dd=a.parentElement;
+      if(!dd.classList.contains('open')){ e.preventDefault(); dd.classList.add('open'); }
+    });
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest || !e.target.closest('.dd')){
+      document.querySelectorAll('.dd.open').forEach(function(d){ d.classList.remove('open'); });
+    }
+  });
   // copy-link share buttons (event delegation so it works on every article page)
   document.addEventListener('click', function(e){
     var t=e.target.closest?e.target.closest('[data-copy-link]'):null;
@@ -34,7 +46,8 @@ document.addEventListener('DOMContentLoaded', function(){
   });
   function fallbackCopy(url){ var i=document.createElement('input'); i.value=url; document.body.appendChild(i); i.select(); try{document.execCommand('copy');}catch(_){} document.body.removeChild(i); }
   initFb();
-  onFbReady(function(){ initPolls(); initCountdown(); });
+  initCountdown();
+  onFbReady(function(){ initPolls(); });
   // admin page boots itself
   if(document.getElementById('admin-root')){ onFbReady(initAdmin); }
   // dynamic latest posts on /news/
@@ -62,7 +75,7 @@ function initCountdown(){
 
 // ---------- fan polls (multi-poll registry) ----------
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-var POLLS = {"bb-winner": {"doc": "bb20-week4", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Will Win Bigg Boss 20?", "weekly": false, "danger": false, "sub": "Season-long unofficial fan poll. One vote per device.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "kanika-mann", "name": "Kanika Mann"}, {"slug": "scoutop", "name": "ScoutOP"}, {"slug": "mahhi-vij", "name": "Mahhi Vij"}, {"slug": "yung-dsa", "name": "Yung DSA"}, {"slug": "qazi-touqeer", "name": "Qazi Touqeer"}, {"slug": "arishfa-khan", "name": "Arishfa Khan"}, {"slug": "gullu", "name": "Gullu"}, {"slug": "uditi-singh", "name": "Uditi Singh"}, {"slug": "love-gill", "name": "Love Gill"}]}, "bb-evict": {"doc": "bb20-evict", "votesColl": "rs_poll_evict_votes", "totalsColl": "rs_poll_evict_totals", "title": "Who Will Be Evicted This Weekend?", "weekly": true, "danger": true, "sub": "Weekly eviction prediction \u2014 vote for who you think will LEAVE. Resets every Monday.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results. Lowest-vote contestants are marked \"in danger\".", "options": [{"slug": "mary-kom", "name": "Mary Kom"}, {"slug": "aasif-khan", "name": "Aasif Khan"}, {"slug": "kanika-mann", "name": "Kanika Mann"}, {"slug": "scoutop", "name": "ScoutOP"}, {"slug": "amrapali-dubey", "name": "Amrapali Dubey"}, {"slug": "mahhi-vij", "name": "Mahhi Vij"}, {"slug": "yung-dsa", "name": "Yung DSA"}, {"slug": "qazi-touqeer", "name": "Qazi Touqeer"}, {"slug": "arishfa-khan", "name": "Arishfa Khan"}, {"slug": "gullu", "name": "Gullu"}, {"slug": "uditi-singh", "name": "Uditi Singh"}, {"slug": "aman-gandhi", "name": "Aman Gandhi"}, {"slug": "love-gill", "name": "Love Gill"}, {"slug": "manish-goel", "name": "Manish Goel"}, {"slug": "nakul-dhull", "name": "Nakul Dhull"}]}, "kkk15-winner": {"doc": "kkk15-winner", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Will Win Khatron Ke Khiladi 15?", "weekly": false, "danger": false, "sub": "Finale Oct 3-4! Poll open till the official telecast. Winner \"leaks\" online are unverified rumours.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "farrhana-bhatt", "name": "Farrhana Bhatt"}, {"slug": "avinash-mishra", "name": "Avinash Mishra"}, {"slug": "karan-wahi", "name": "Karan Wahi"}, {"slug": "rubina-dilaik", "name": "Rubina Dilaik"}, {"slug": "orry", "name": "Orry"}, {"slug": "rithvik-dhanjani", "name": "Rithvik Dhanjani"}, {"slug": "harsh-gujral", "name": "Harsh Gujral"}, {"slug": "shagun-sharma", "name": "Shagun Sharma"}, {"slug": "avika-gor", "name": "Avika Gor"}, {"slug": "ruhanika-dhawan", "name": "Ruhanika Dhawan"}]}, "rf2-winner": {"doc": "rf2-winner", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Will Win Rise and Fall Season 2?", "weekly": false, "danger": false, "sub": "Rulers vs Workers \u2014 back your winner. One vote per device.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "swara-bhasker", "name": "Swara Bhasker"}, {"slug": "shehzad-poonawalla", "name": "Shehzad Poonawalla"}, {"slug": "priyanka-chahar-choudhary", "name": "Priyanka Chahar Choudhary"}, {"slug": "karan-patel", "name": "Karan Patel"}, {"slug": "kajal-raghwani", "name": "Kajal Raghwani"}, {"slug": "tej-pratap-yadav", "name": "Tej Pratap Yadav"}, {"slug": "niharika-tiwari", "name": "Niharika Tiwari"}]}, "lockupp-next": {"doc": "lockupp-next", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Do You Want in the Next Lock Upp Season?", "weekly": false, "danger": false, "sub": "Dream-contestant poll \u2014 which kind of celebrity should enter the jail next?", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "bb-alumni", "name": "Bigg Boss Alumni"}, {"slug": "roadies-splitsvilla", "name": "Roadies / Splitsvilla Stars"}, {"slug": "tv-actors", "name": "TV Actors"}, {"slug": "influencers", "name": "Influencers & YouTubers"}, {"slug": "cricketers", "name": "Cricketers"}, {"slug": "comedians", "name": "Comedians"}]}, "roadies-factions": {"doc": "roadies-factions", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "OGs vs NewGs \u2014 Which Side Are You On?", "weekly": false, "danger": false, "sub": "Pick your camp before the October 16 premiere.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "ogs", "name": "Team OGs (Nikhil, Neha, Prince)"}, {"slug": "newgs", "name": "Team NewGs (Fukra, Bani, Baseer)"}]}, "latent-best": {"doc": "latent-best", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Best India's Got Latent S2 Moment So Far?", "weekly": false, "danger": false, "sub": "Vote for your favourite moment of the season.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "ep7-prateik", "name": "Ep 7 \u2014 Prateik's Amitabh mimicry (9.5)"}, {"slug": "bonus3-kalal", "name": "Bonus EP 3 \u2014 Deepak Kalal's emotional moment"}, {"slug": "bonus4-ayushmann", "name": "Bonus EP 4 \u2014 Ayushmann & Suhani episode"}, {"slug": "premiere", "name": "Premiere \u2014 Alia & Sharvari kick-off"}]}, "idol17-hype": {"doc": "idol17-hype", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "What Are You Most Excited For in Indian Idol 17?", "weekly": false, "danger": false, "sub": "The \"Legends Return\" season is coming \u2014 what has you hyped?", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "himesh", "name": "Himesh Reshammiya's return"}, {"slug": "legends-theme", "name": "The 'Legends Return' theme"}, {"slug": "auditions", "name": "The auditions"}, {"slug": "winner-journey", "name": "The winner's journey"}]}, "splitsvilla-best": {"doc": "splitsvilla-best", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Best Couple of Splitsvilla X6?", "weekly": false, "danger": false, "sub": "The season ended \u2014 crown your favourite jodi.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "gullu-kaira", "name": "Gullu & Kaira Anu (winners)"}, {"slug": "yogesh-ruru", "name": "Yogesh Rawat & Ruru Thakur"}]}, "sharktank-fav": {"doc": "sharktank-fav", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Favourite New Shark of Season 5?", "weekly": false, "danger": false, "sub": "Six new sharks joined the tank \u2014 who impressed you most?", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "varun-alagh", "name": "Varun Alagh"}, {"slug": "mohit-yadav", "name": "Mohit Yadav"}, {"slug": "kanika-tekriwal", "name": "Kanika Tekriwal"}, {"slug": "shaily-mehrotra", "name": "Shaily Mehrotra"}, {"slug": "hardik-kothiya", "name": "Hardik Kothiya"}, {"slug": "pratham-mittal", "name": "Pratham Mittal"}]}};
+var POLLS = {"bb-winner": {"doc": "bb20-week4", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Will Win Bigg Boss 20?", "weekly": false, "danger": false, "sub": "Season-long unofficial fan poll. One vote per device.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "kanika-mann", "name": "Kanika Mann"}, {"slug": "scoutop", "name": "ScoutOP"}, {"slug": "mahhi-vij", "name": "Mahhi Vij"}, {"slug": "yung-dsa", "name": "Yung DSA"}, {"slug": "qazi-touqeer", "name": "Qazi Touqeer"}, {"slug": "arishfa-khan", "name": "Arishfa Khan"}, {"slug": "gullu", "name": "Gullu"}, {"slug": "uditi-singh", "name": "Uditi Singh"}, {"slug": "love-gill", "name": "Love Gill"}]}, "bb-evict": {"doc": "bb20-evict", "votesColl": "rs_poll_evict_votes", "totalsColl": "rs_poll_evict_totals", "title": "Who Will Be Evicted This Weekend?", "weekly": true, "danger": true, "sub": "Weekly eviction prediction \u2014 vote for who you think will LEAVE. Resets every Monday.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results. Lowest-vote contestants are marked \"in danger\".", "options": [{"slug": "mary-kom", "name": "Mary Kom"}, {"slug": "aasif-khan", "name": "Aasif Khan"}, {"slug": "kanika-mann", "name": "Kanika Mann"}, {"slug": "scoutop", "name": "ScoutOP"}, {"slug": "amrapali-dubey", "name": "Amrapali Dubey"}, {"slug": "mahhi-vij", "name": "Mahhi Vij"}, {"slug": "yung-dsa", "name": "Yung DSA"}, {"slug": "qazi-touqeer", "name": "Qazi Touqeer"}, {"slug": "arishfa-khan", "name": "Arishfa Khan"}, {"slug": "gullu", "name": "Gullu"}, {"slug": "uditi-singh", "name": "Uditi Singh"}, {"slug": "aman-gandhi", "name": "Aman Gandhi"}, {"slug": "love-gill", "name": "Love Gill"}, {"slug": "manish-goel", "name": "Manish Goel"}, {"slug": "nakul-dhull", "name": "Nakul Dhull"}]}, "kkk15-winner": {"doc": "kkk15-winner", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Will Win Khatron Ke Khiladi 15?", "weekly": false, "danger": false, "sub": "Finale Oct 3-4! Poll open till the official telecast. Winner \"leaks\" online are unverified rumours.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "farrhana-bhatt", "name": "Farrhana Bhatt"}, {"slug": "avinash-mishra", "name": "Avinash Mishra"}, {"slug": "karan-wahi", "name": "Karan Wahi"}, {"slug": "rubina-dilaik", "name": "Rubina Dilaik"}, {"slug": "orry", "name": "Orry"}, {"slug": "rithvik-dhanjani", "name": "Rithvik Dhanjani"}, {"slug": "harsh-gujral", "name": "Harsh Gujral"}, {"slug": "shagun-sharma", "name": "Shagun Sharma"}, {"slug": "avika-gor", "name": "Avika Gor"}, {"slug": "ruhanika-dhawan", "name": "Ruhanika Dhawan"}]}, "rf2-winner": {"doc": "rf2-winner", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Will Win Rise and Fall Season 2?", "weekly": false, "danger": false, "sub": "Rulers vs Workers \u2014 back your winner. One vote per device.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "swara-bhasker", "name": "Swara Bhasker"}, {"slug": "shehzad-poonawalla", "name": "Shehzad Poonawalla"}, {"slug": "priyanka-chahar-choudhary", "name": "Priyanka Chahar Choudhary"}, {"slug": "karan-patel", "name": "Karan Patel"}, {"slug": "kajal-raghwani", "name": "Kajal Raghwani"}, {"slug": "tej-pratap-yadav", "name": "Tej Pratap Yadav"}, {"slug": "niharika-tiwari", "name": "Niharika Tiwari"}, {"slug": "anish-bhagat", "name": "Anish Bhagat"}, {"slug": "gautam-gulati", "name": "Gautam Gulati"}, {"slug": "kaira-anu", "name": "Kaira Anu"}, {"slug": "sara-gurpal", "name": "Sara Gurpal"}, {"slug": "irina-rudakova", "name": "Irina Rudakova"}, {"slug": "raj-grover", "name": "Raj Grover"}, {"slug": "manish-kashyap", "name": "Manish Kashyap"}]}, "lockupp-next": {"doc": "lockupp-next", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Who Do You Want in the Next Lock Upp Season?", "weekly": false, "danger": false, "sub": "Dream-contestant poll \u2014 which kind of celebrity should enter the jail next?", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "bb-alumni", "name": "Bigg Boss Alumni"}, {"slug": "roadies-splitsvilla", "name": "Roadies / Splitsvilla Stars"}, {"slug": "tv-actors", "name": "TV Actors"}, {"slug": "influencers", "name": "Influencers & YouTubers"}, {"slug": "cricketers", "name": "Cricketers"}, {"slug": "comedians", "name": "Comedians"}]}, "roadies-factions": {"doc": "roadies-factions", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "OGs vs NewGs \u2014 Which Side Are You On?", "weekly": false, "danger": false, "sub": "Pick your camp before the October 16 premiere.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "ogs", "name": "Team OGs (Nikhil, Neha, Prince)"}, {"slug": "newgs", "name": "Team NewGs (Fukra, Bani, Baseer)"}]}, "latent-best": {"doc": "latent-best", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Best India's Got Latent S2 Moment So Far?", "weekly": false, "danger": false, "sub": "Vote for your favourite moment of the season.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "ep7-prateik", "name": "Ep 7 \u2014 Prateik's Amitabh mimicry (9.5)"}, {"slug": "bonus3-kalal", "name": "Bonus EP 3 \u2014 Deepak Kalal's emotional moment"}, {"slug": "bonus4-ayushmann", "name": "Bonus EP 4 \u2014 Ayushmann & Suhani episode"}, {"slug": "premiere", "name": "Premiere \u2014 Alia & Sharvari kick-off"}]}, "idol17-hype": {"doc": "idol17-hype", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "What Are You Most Excited For in Indian Idol 17?", "weekly": false, "danger": false, "sub": "The \"Legends Return\" season is coming \u2014 what has you hyped?", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "himesh", "name": "Himesh Reshammiya's return"}, {"slug": "legends-theme", "name": "The 'Legends Return' theme"}, {"slug": "auditions", "name": "The auditions"}, {"slug": "winner-journey", "name": "The winner's journey"}]}, "splitsvilla-best": {"doc": "splitsvilla-best", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Best Couple of Splitsvilla X6?", "weekly": false, "danger": false, "sub": "The season ended \u2014 crown your favourite jodi.", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "gullu-kaira", "name": "Gullu & Kaira Anu (winners)"}, {"slug": "yogesh-ruru", "name": "Yogesh Rawat & Ruru Thakur"}]}, "sharktank-fav": {"doc": "sharktank-fav", "votesColl": "rs_poll_votes", "totalsColl": "rs_poll_totals", "title": "Favourite New Shark of Season 5?", "weekly": false, "danger": false, "sub": "Six new sharks joined the tank \u2014 who impressed you most?", "disclaimer": "Not affiliated with or endorsed by any broadcaster or production house. This poll has no bearing on official results.", "options": [{"slug": "varun-alagh", "name": "Varun Alagh"}, {"slug": "mohit-yadav", "name": "Mohit Yadav"}, {"slug": "kanika-tekriwal", "name": "Kanika Tekriwal"}, {"slug": "shaily-mehrotra", "name": "Shaily Mehrotra"}, {"slug": "hardik-kothiya", "name": "Hardik Kothiya"}, {"slug": "pratham-mittal", "name": "Pratham Mittal"}]}};
 var POLL_ALIAS = {mini:'bb-winner', full:'bb-winner'};
 
 function isoWeekId(){
@@ -173,41 +186,71 @@ function refreshPoll(root, cfg, doc){
       ? ('<span class="live-dot"></span>LIVE &middot; <b>'+total.toLocaleString('en-IN')+'</b> fan votes')
       : 'Be the first to vote!';
   }
-  try{
-    // Real-time listener: every vote updates all viewers within ~1 second.
-    root._unsub=firebase.firestore().collection(cfg.totalsColl).doc(doc).onSnapshot(function(d){
-      counts={}; total=0;
-      if(d.exists){ counts=d.data()||{}; Object.keys(counts).forEach(function(k){ total+=counts[k]||0; }); }
+  var tries=0;
+  function subscribe(){
+    tries++;
+    try{
+      // Real-time listener: every vote updates all viewers within ~1 second.
+      root._unsub=firebase.firestore().collection(cfg.totalsColl).doc(doc).onSnapshot(function(d){
+        tries=0;
+        counts={}; total=0;
+        if(d.exists){ counts=d.data()||{}; Object.keys(counts).forEach(function(k){ total+=counts[k]||0; }); }
+        render();
+      }, function(){
+        render();
+        if(tries<4){ setTimeout(subscribe, 1500*tries); }
+      });
+    }catch(e){
       render();
-    }, function(){ render(); });
-  }catch(e){ render(); }
+      if(tries<4){ setTimeout(subscribe, 1500*tries); }
+    }
+  }
+  subscribe();
 }
 // ---------- dynamic posts on /news/ (from Firestore rs_posts) ----------
-function loadDynPosts(){
-  var box=document.getElementById('dyn-posts'); if(!box) return;
+function dynDate(ts){
   try{
-    firebase.firestore().collection('rs_posts')
-      .orderBy('createdAt','desc').limit(10).get().then(function(q){
-      if(q.empty) return;
-      var h='<div class="sec-head"><h2>Fresh <span>Updates</span></h2></div><div class="grid">';
-      var n=0;
-      q.forEach(function(d){
-        var p=d.data();
-        if(!p.published) return;
-        n++;
-        var art = p.imageUrl
-          ? '<div class="card-art" style="padding:0"><img src="'+escapeHtml(p.imageUrl)+'" alt="" style="width:100%;height:170px;object-fit:cover"/></div>'
-          : '<div class="card-art">'+escapeHtml((p.title||'?').slice(0,2).toUpperCase())+'</div>';
-        var href = p.slug ? '/news/'+encodeURIComponent(p.slug)+'/' : '#';
-        h+='<a class="card" href="'+href+'">'+art
-          +'<div class="card-body"><span class="cat">'+escapeHtml(p.category||'News')+'</span>'
-          +'<h3>'+escapeHtml(p.title||'')+'</h3><p>'+escapeHtml(p.excerpt||'')+'</p>'
-          +'<div class="meta">Aabid Khan &middot; Read full story &rarr;</div></div></a>';
+    var d=ts&&ts.toDate?ts.toDate():new Date(ts);
+    return d.toLocaleDateString(\'en-IN\',{day:\'numeric\',month:\'short\',year:\'numeric\'});
+  }catch(e){ return \'\'; }
+}
+function loadDynPosts(){
+  var box=document.getElementById(\'dyn-posts\'); if(!box) return;
+  var grid=box.querySelector(\'.grid\'); if(!grid) return;
+  var tries=0;
+  function attempt(){
+    tries++;
+    try{
+      firebase.firestore().collection(\'rs_posts\')
+        .select(\'title\',\'slug\',\'excerpt\',\'category\',\'published\',\'imageUrl\',\'createdAt\')
+        .orderBy(\'createdAt\',\'desc\').limit(10).get().then(function(q){
+        if(q.empty){ box.style.display=\'none\'; return; }
+        var h=\'\', n=0;
+        q.forEach(function(d){
+          var p=d.data();
+          if(!p.published) return;
+          n++;
+          var art = p.imageUrl
+            ? \'<div class="card-art" style="padding:0"><img src="\'+escapeHtml(p.imageUrl)+\'" alt="\'+escapeHtml(p.title||\'\')+\'" loading="lazy" style="width:100%;height:170px;object-fit:cover;display:block"/>\'
+            : \'<div class="card-art">\'+escapeHtml((p.title||\'?\').replace(/^[^A-Za-z]+/,\'\').slice(0,2).toUpperCase())+\'</div>\';
+          var href = p.slug ? \'/news/\'+encodeURIComponent(p.slug)+\'/\' : \'#\';
+          h+=\'<a class="card" href="\'+href+\'">\'+art
+            +\'<div class="card-body"><span class="cat">\'+escapeHtml(p.category||\'News\')+\'</span>\'
+            +\'<h3>\'+escapeHtml(p.title||\'\')+\'</h3><p>\'+escapeHtml(p.excerpt||\'\')+\'</p>\'
+            +\'<div class="meta">\'+dynDate(p.createdAt)+\' &middot; Aabid Khan</div></div></a>\';
+        });
+        if(!n){ box.style.display=\'none\'; return; }
+        grid.innerHTML=h; grid.style.display=\'\';
+      }).catch(function(){
+        if(tries<3){ setTimeout(attempt, 1200*tries); }
+        else { box.style.display=\'none\'; }
       });
-      if(!n) return;
-      box.innerHTML=h+'</div>';
-    }).catch(function(){});
-  }catch(e){}
+    }catch(e){
+      if(tries<3){ setTimeout(attempt, 1200*tries); }
+      else { box.style.display=\'none\'; }
+    }
+  }
+  attempt();
 }
 
 // ---------- trending-now widget + article view counting ----------
@@ -241,7 +284,7 @@ function initTrending(){
         var items=[];
         q.forEach(function(d){ var v=d.data();
           if(v.title && (v.dayViews||0)>0) items.push({slug:d.id, title:v.title, n:v.dayViews}); });
-        if(!items.length){ box.style.display='none'; return; }
+        if(items.length<3){ box.style.display='none'; return; }
         var h='<div class="sec-head"><h2>Trending <span>Now</span></h2></div><ol class="trend-list">';
         items.forEach(function(it,i){
           h+='<li><span class="trend-rank">'+(i+1)+'</span>'

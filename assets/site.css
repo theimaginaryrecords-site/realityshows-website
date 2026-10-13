@@ -147,8 +147,12 @@ footer.site{border-top:1px solid var(--border);background:var(--bg2);margin-top:
 .dd{position:relative}
 .dd>a::after{content:" \25BE";font-size:.7em}
 .dd-menu{display:none;position:absolute;top:100%;left:0;background:var(--bg2);border:1px solid var(--border);border-radius:10px;min-width:230px;padding:6px;z-index:60;box-shadow:0 18px 50px rgba(0,0,0,.5)}
-.dd:hover .dd-menu,.dd:focus-within .dd-menu{display:block}
+.dd:hover .dd-menu,.dd:focus-within .dd-menu,.dd.open .dd-menu{display:block}
 .dd-menu a{display:block!important;padding:10px 14px!important;border-radius:8px;white-space:nowrap}
+.cookie-bar{position:fixed;left:12px;right:12px;bottom:12px;z-index:200;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 18px;display:none;align-items:center;gap:14px;box-shadow:0 18px 50px rgba(0,0,0,.55);max-width:640px;margin:0 auto}
+.cookie-bar.show{display:flex}
+.cookie-bar p{margin:0;font-size:.85rem;color:var(--muted);flex:1}
+.cookie-bar p a{color:var(--gold)}
 /* danger badge (eviction poll) */
 .opt.danger .opt-name{color:#f87171}
 .opt.danger .opt-name::after{content:"IN DANGER";font-size:.62rem;font-weight:800;letter-spacing:.1em;color:#fff;background:#e5484d;border-radius:6px;padding:3px 8px;margin-left:8px;vertical-align:middle}
