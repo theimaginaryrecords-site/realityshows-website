@@ -188,3 +188,14 @@ footer.site{border-top:1px solid var(--border);background:var(--bg2);margin-top:
 .duo .poll-card{margin:0;max-width:none}
 @media(max-width:900px){.duo{grid-template-columns:1fr}}
 .out-badge{color:#f87171!important}
+/* trending-now widget */
+#trending-now{margin:0 0 8px}
+.trend-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.trend-list li{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.trend-rank{flex:0 0 34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a0f2e;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:1rem}
+.trend-list a{flex:1;color:var(--text);font-weight:600;text-decoration:none}
+.trend-list a:hover{color:var(--gold2)}
+.trend-views{flex:0 0 auto;font-size:.78rem;color:var(--muted);white-space:nowrap}
+/* byline link */
+.article .meta a{color:var(--gold2);text-decoration:none}
+.article .meta a:hover{text-decoration:underline}

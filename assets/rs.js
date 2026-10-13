@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', function(){
   if(document.getElementById('admin-root')){ onFbReady(initAdmin); }
   // dynamic latest posts on /news/
   if(document.getElementById('dyn-posts')){ onFbReady(loadDynPosts); }
+  // trending-now widget + article view counting
+  onFbReady(initTrending);
 });
 
 // ---------- countdown to Weekend Ka Vaar (next Saturday 21:00 IST, sample logic) ----------
@@ -199,12 +201,56 @@ function loadDynPosts(){
         h+='<a class="card" href="'+href+'">'+art
           +'<div class="card-body"><span class="cat">'+escapeHtml(p.category||'News')+'</span>'
           +'<h3>'+escapeHtml(p.title||'')+'</h3><p>'+escapeHtml(p.excerpt||'')+'</p>'
-          +'<div class="meta">Reality Shows desk &middot; Read full story &rarr;</div></div></a>';
+          +'<div class="meta">Aabid Khan &middot; Read full story &rarr;</div></div></a>';
       });
       if(!n) return;
       box.innerHTML=h+'</div>';
     }).catch(function(){});
   }catch(e){}
+}
+
+// ---------- trending-now widget + article view counting ----------
+// Counts anonymous article views in Firestore (rs_article_stats) and renders a
+// "Trending Now" list ranked by today's view velocity on home + news pages.
+function initTrending(){
+  var slug=document.body.getAttribute('data-article-slug');
+  var box=document.getElementById('trending-now');
+  if(!slug && !box) return;
+  var db=firebase.firestore();
+  if(slug){
+    try{
+      var ref=db.collection('rs_article_stats').doc(slug);
+      var today=new Date().toISOString().slice(0,10);
+      var h1=document.querySelector('article h1');
+      var title=h1?h1.textContent.slice(0,140):'';
+      db.runTransaction(function(tx){
+        return tx.get(ref).then(function(d){
+          var v=d.exists?d.data():{};
+          var upd={views:(v.views||0)+1, title:title};
+          if(v.day===today){ upd.dayViews=(v.dayViews||0)+1; }
+          else { upd.dayViews=1; upd.day=today; }
+          tx.set(ref, upd, {merge:true});
+        });
+      }).catch(function(){});
+    }catch(e){}
+  }
+  if(box){
+    try{
+      db.collection('rs_article_stats').orderBy('dayViews','desc').limit(5).get().then(function(q){
+        var items=[];
+        q.forEach(function(d){ var v=d.data();
+          if(v.title && (v.dayViews||0)>0) items.push({slug:d.id, title:v.title, n:v.dayViews}); });
+        if(!items.length){ box.style.display='none'; return; }
+        var h='<div class="sec-head"><h2>Trending <span>Now</span></h2></div><ol class="trend-list">';
+        items.forEach(function(it,i){
+          h+='<li><span class="trend-rank">'+(i+1)+'</span>'
+            +'<a href="/news/'+encodeURIComponent(it.slug)+'/">'+escapeHtml(it.title)+'</a>'
+            +'<span class="trend-views">'+it.n+' reads today</span></li>';
+        });
+        box.innerHTML=h+'</ol>';
+      }).catch(function(){ box.style.display='none'; });
+    }catch(e){ box.style.display='none'; }
+  }
 }
 
 // ---------- admin CMS (full control panel) ----------
